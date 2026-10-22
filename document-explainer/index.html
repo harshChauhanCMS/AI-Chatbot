@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>AI Document Explainer</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- Header -->
+    <header>
+      <h1>AI Document Explainer</h1>
+      <p>Understand your documents in simple language.</p>
+    </header>
+
+    <main>
+
+      <!-- Document Upload Section -->
+      <section class="upload-card">
+        <h2>Upload or connect a document</h2>
+
+        <label for="document">Choose PDF, Excel or CSV</label>
+
+        <input
+          type="file"
+          id="document"
+          accept=".pdf,.xlsx,.xls,.csv"
+        >
+
+        <p id="fileInfo">No file selected</p>
+
+        <div class="divider">OR</div>
+
+        <label for="sheetUrl">Google Sheets URL</label>
+
+        <input
+          type="url"
+          id="sheetUrl"
+          placeholder="Paste your Google Sheets link"
+        >
+
+        <button type="button" id="connectSheet">
+          Use Google Sheet
+        </button>
+      </section>
+
+      <!-- Chat Section -->
+      <section class="chat-card">
+        <h2>Ask your question</h2>
+
+        <div id="chatMessages" aria-live="polite">
+          <div class="message assistant">
+            Hello! Upload a document and ask me to explain it.
+          </div>
+        </div>
+
+        <!-- Extracted Document Data Section -->
+        <section class="document-data-panel">
+          <h3>Extracted Document Data</h3>
+
+          <p id="documentDataInfo">
+            Upload a file to view its extracted data.
+          </p>
+
+          <pre id="extractedData">No document data available yet.</pre>
+        </section>
+
+        <!-- Question Form -->
+        <form id="questionForm">
+
+          <label for="question">Your question</label>
+
+          <textarea
+            id="question"
+            placeholder="Example: Explain this report in simple Hindi..."
+            required
+          ></textarea>
+
+          <button type="submit" id="sendButton">
+            Explain Document
+          </button>
+
+        </form>
+
+        <!-- Status Message -->
+        <p id="status" role="status"></p>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      AI Document Explainer · PDF · Excel · Google Sheets
+    </footer>
+
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
