@@ -1,4 +1,3 @@
-
 const fileInput = document.getElementById("document");
 const fileInfo = document.getElementById("fileInfo");
 const sheetUrl = document.getElementById("sheetUrl");
@@ -11,6 +10,14 @@ const extractedData = document.getElementById("extractedData");
 const documentDataInfo = document.getElementById("documentDataInfo");
 const sendButton = document.getElementById("sendButton");
 
+// New interface elements
+const dropzone = document.getElementById("dropzone");
+const removeFile = document.getElementById("removeFile");
+const clearChat = document.getElementById("clearChat");
+const chips = document.getElementById("chips");
+const dataPanel = document.getElementById("dataPanel");
+const dataBadge = document.getElementById("dataBadge");
+
 const API_URL = "http://127.0.0.1:8000";
 
 let selectedFile = null;
@@ -20,6 +27,22 @@ let uploadedFileName = "";
 let extractedStructuredData = [];
 
 const allowedExtensions = ["pdf", "xlsx", "xls", "csv"];
+const WELCOME = "Hello! Upload a document, then ask me to explain it.";
+
+// ---------- Helpers ----------
+function setStatus(text, isError = false) {
+  statusText.textContent = text;
+  statusText.classList.toggle("error", isError);
+}
+
+function setDataBadge(text, ready) {
+  dataBadge.textContent = text;
+  dataBadge.classList.toggle("ready", ready);
+}
+
+function scrollChatToBottom() {
+  chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
+}
 
 // STEP 1: Reset previously loaded document data
 function resetDocumentData() {
@@ -30,6 +53,9 @@ function resetDocumentData() {
   extractedData.textContent = "No document data available yet.";
   documentDataInfo.textContent =
     "Select a file and ask a question to extract its data.";
+
+  setDataBadge("empty", false);
+  dropzone.classList.remove("loaded");
 }
 
 // STEP 2: Handle file selection
@@ -39,6 +65,7 @@ fileInput.addEventListener("change", () => {
   selectedFile = null;
   selectedSheetUrl = "";
   resetDocumentData();
+  removeFile.hidden = true;
 
   if (!file) {
     fileInfo.textContent = "No file selected";
@@ -50,8 +77,7 @@ fileInput.addEventListener("change", () => {
   if (!allowedExtensions.includes(extension)) {
     fileInput.value = "";
     fileInfo.textContent = "Unsupported file type.";
-    statusText.textContent =
-      "Please select PDF, XLSX, XLS, or CSV.";
+    setStatus("Please select a PDF, XLSX, XLS or CSV file.", true);
     return;
   }
 
@@ -61,8 +87,43 @@ fileInput.addEventListener("change", () => {
   fileInfo.textContent =
     `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
 
-  statusText.textContent =
-    "File selected. Ask a question to process it.";
+  dropzone.classList.add("loaded");
+  removeFile.hidden = false;
+  setStatus("File selected. Ask a question to process it.");
+  questionInput.focus();
+});
+
+// NEW: remove the selected file
+removeFile.addEventListener("click", () => {
+  fileInput.value = "";
+  selectedFile = null;
+  resetDocumentData();
+  fileInfo.textContent = "No file selected";
+  removeFile.hidden = true;
+  setStatus("File removed.");
+});
+
+// NEW: drag and drop
+["dragenter", "dragover"].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  })
+);
+
+["dragleave", "drop"].forEach((evt) =>
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+  })
+);
+
+dropzone.addEventListener("drop", (e) => {
+  const files = e.dataTransfer.files;
+  if (!files.length) return;
+
+  fileInput.files = files;
+  fileInput.dispatchEvent(new Event("change"));
 });
 
 // STEP 3: Handle Google Sheets URL
@@ -70,8 +131,7 @@ connectSheet.addEventListener("click", () => {
   const url = sheetUrl.value.trim();
 
   if (!url) {
-    statusText.textContent =
-      "Please paste your Google Sheets URL.";
+    setStatus("Please paste your Google Sheets URL.", true);
     return;
   }
 
@@ -90,38 +150,65 @@ connectSheet.addEventListener("click", () => {
     selectedFile = null;
     fileInput.value = "";
     resetDocumentData();
+    removeFile.hidden = true;
 
     fileInfo.textContent = "Google Sheet link selected.";
     extractedData.textContent =
       "Google Sheets integration is not connected yet.";
-
     documentDataInfo.textContent =
       "Google Sheets authorization is required.";
 
-    statusText.textContent =
+    setStatus(
       "Google Sheets integration is not ready yet. " +
-      "Please upload a PDF, Excel, or CSV file.";
+      "Please upload a PDF, Excel, or CSV file.",
+      true
+    );
   } catch {
-    statusText.textContent =
-      "Please enter a valid Google Sheets URL.";
+    setStatus("Please enter a valid Google Sheets URL.", true);
   }
 });
 
 // STEP 4: Safely display a chat message
-function addMessage(role, content) {
+function addMessage(role, content, isError = false) {
   const message = document.createElement("div");
 
-  message.className = `message ${role}`;
+  message.className = `message ${role}${isError ? " error" : ""}`;
   message.textContent = String(content ?? "");
 
-  chatMessages.appendChild(message);
+  // Copy button on assistant answers
+  if (role === "assistant" && !isError) {
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "copy-btn";
+    copyBtn.textContent = "Copy";
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(String(content ?? ""));
+        copyBtn.textContent = "Copied";
+      } catch {
+        copyBtn.textContent = "Copy failed";
+      }
+      setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+    });
+    // Skip the button on the welcome message
+    if (content !== WELCOME) message.appendChild(copyBtn);
+  }
 
-  message.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest"
-  });
+  chatMessages.appendChild(message);
+  scrollChatToBottom();
 
   return message;
+}
+
+// NEW: typing indicator shown while waiting for the backend
+function showTyping() {
+  const el = document.createElement("div");
+  el.className = "message assistant typing";
+  el.setAttribute("aria-label", "Assistant is typing");
+  el.innerHTML = "<i></i><i></i><i></i>";
+  chatMessages.appendChild(el);
+  scrollChatToBottom();
+  return el;
 }
 
 // STEP 5: Display matching records as an actual HTML table
@@ -167,7 +254,6 @@ function displayResultTable(tableData) {
 
     tableData.columns.forEach((column, index) => {
       const td = document.createElement("td");
-
       let value;
 
       if (Array.isArray(row)) {
@@ -177,9 +263,7 @@ function displayResultTable(tableData) {
       }
 
       td.textContent =
-        value === null || value === undefined
-          ? ""
-          : String(value);
+        value === null || value === undefined ? "" : String(value);
 
       tr.appendChild(td);
     });
@@ -190,11 +274,7 @@ function displayResultTable(tableData) {
   table.appendChild(tbody);
   wrapper.appendChild(table);
   chatMessages.appendChild(wrapper);
-
-  wrapper.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest"
-  });
+  scrollChatToBottom();
 }
 
 // STEP 6: Upload the document to the backend
@@ -210,15 +290,11 @@ async function uploadDocument(file) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(
-      data.detail || "Document upload failed."
-    );
+    throw new Error(data.detail || "Document upload failed.");
   }
 
   if (typeof data.extracted_content !== "string") {
-    throw new Error(
-      "The backend did not return extracted document text."
-    );
+    throw new Error("The backend did not return extracted document text.");
   }
 
   extractedStructuredData = Array.isArray(data.structured_data)
@@ -228,6 +304,30 @@ async function uploadDocument(file) {
   return data;
 }
 
+// NEW: suggestion chips fill the question box
+chips.addEventListener("click", (event) => {
+  const chip = event.target.closest(".chip");
+  if (!chip) return;
+
+  questionInput.value = chip.dataset.q;
+  questionInput.focus();
+});
+
+// NEW: Enter sends, Shift+Enter adds a new line
+questionInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    questionForm.requestSubmit();
+  }
+});
+
+// NEW: clear the conversation
+clearChat.addEventListener("click", () => {
+  chatMessages.innerHTML = "";
+  addMessage("assistant", WELCOME);
+  setStatus("");
+});
+
 // STEP 7: Ask questions about the selected document
 questionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -235,19 +335,21 @@ questionForm.addEventListener("submit", async (event) => {
   const question = questionInput.value.trim();
 
   if (!selectedFile && !selectedSheetUrl) {
-    statusText.textContent = "Please select a document first.";
+    setStatus("Please select a document first.", true);
     return;
   }
 
   if (!question) {
-    statusText.textContent = "Please enter a question.";
+    setStatus("Please enter a question.", true);
     return;
   }
 
   if (selectedSheetUrl && !selectedFile) {
-    statusText.textContent =
+    setStatus(
       "Google Sheets integration is not ready yet. " +
-      "Please upload a PDF, Excel, or CSV file.";
+      "Please upload a PDF, Excel, or CSV file.",
+      true
+    );
     return;
   }
 
@@ -255,21 +357,19 @@ questionForm.addEventListener("submit", async (event) => {
 
   questionInput.value = "";
   sendButton.disabled = true;
+  sendButton.textContent = "Working...";
 
-  statusText.textContent = "Reading your document...";
+  setStatus("Reading your document...");
+  const typing = showTyping();
 
   try {
     // Upload once per selected file
-    if (
-      !extractedContent ||
-      uploadedFileName !== selectedFile.name
-    ) {
+    if (!extractedContent || uploadedFileName !== selectedFile.name) {
       const uploadData = await uploadDocument(selectedFile);
 
       extractedContent = uploadData.extracted_content;
       uploadedFileName = selectedFile.name;
 
-      // Show the extracted document separately
       extractedData.textContent = extractedContent;
 
       documentDataInfo.textContent =
@@ -279,21 +379,23 @@ questionForm.addEventListener("submit", async (event) => {
           ? " | Warning: Content was truncated by the backend."
           : "");
 
-      addMessage(
-        "assistant",
-        `Document loaded: ${uploadData.filename}. ` +
-        `${uploadData.character_count} characters extracted.`
+      setDataBadge("ready", true);
+
+      typing.before(
+        Object.assign(document.createElement("div"), {
+          className: "message assistant",
+          textContent:
+            `Document loaded: ${uploadData.filename}. ` +
+            `${uploadData.character_count} characters extracted.`
+        })
       );
     }
 
-    // Send the question, text and structured spreadsheet data
-    statusText.textContent = "Finding the relevant information...";
+    setStatus("Finding the relevant information...");
 
     const response = await fetch(`${API_URL}/api/ask`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question: question,
         document_content: extractedContent,
@@ -304,33 +406,29 @@ questionForm.addEventListener("submit", async (event) => {
     const answerData = await response.json();
 
     if (!response.ok) {
-      throw new Error(
-        answerData.detail || "Could not answer the question."
-      );
+      throw new Error(answerData.detail || "Could not answer the question.");
     }
 
-    // Display the answer returned by the backend
+    typing.remove();
+
     if (answerData.answer) {
       addMessage("assistant", answerData.answer);
     }
 
-    // Display actual records if the backend returns a table
     if (answerData.table) {
       displayResultTable(answerData.table);
     }
 
-    statusText.textContent = "Answer generated successfully.";
-
+    setStatus("Answer ready.");
   } catch (error) {
     console.error("Chatbot error:", error);
+    typing.remove();
 
-    statusText.textContent = `Error: ${error.message}`;
-
-    addMessage(
-      "assistant",
-      `Sorry, something went wrong: ${error.message}`
-    );
+    setStatus(`Error: ${error.message}`, true);
+    addMessage("assistant", `Something went wrong: ${error.message}`, true);
   } finally {
+    typing.remove();
     sendButton.disabled = false;
+    sendButton.textContent = "Explain document";
   }
 });
