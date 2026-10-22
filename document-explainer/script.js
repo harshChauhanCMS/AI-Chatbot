@@ -17,21 +17,28 @@ let selectedFile = null;
 let selectedSheetUrl = "";
 let extractedContent = "";
 let uploadedFileName = "";
+let extractedStructuredData = [];
 
 const allowedExtensions = ["pdf", "xlsx", "xls", "csv"];
 
-// STEP 1: Handle file selection
+// STEP 1: Reset previously loaded document data
+function resetDocumentData() {
+  extractedContent = "";
+  uploadedFileName = "";
+  extractedStructuredData = [];
+
+  extractedData.textContent = "No document data available yet.";
+  documentDataInfo.textContent =
+    "Select a file and ask a question to extract its data.";
+}
+
+// STEP 2: Handle file selection
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
 
   selectedFile = null;
-  extractedContent = "";
-  uploadedFileName = "";
-
-  // Clear data from the previous document
-  extractedData.textContent = "No document data available yet.";
-  documentDataInfo.textContent =
-    "Select a file and ask a question to extract its data.";
+  selectedSheetUrl = "";
+  resetDocumentData();
 
   if (!file) {
     fileInfo.textContent = "No file selected";
@@ -49,7 +56,6 @@ fileInput.addEventListener("change", () => {
   }
 
   selectedFile = file;
-  selectedSheetUrl = "";
   sheetUrl.value = "";
 
   fileInfo.textContent =
@@ -59,7 +65,7 @@ fileInput.addEventListener("change", () => {
     "File selected. Ask a question to process it.";
 });
 
-// STEP 2: Handle Google Sheets URL selection
+// STEP 3: Handle Google Sheets URL
 connectSheet.addEventListener("click", () => {
   const url = sheetUrl.value.trim();
 
@@ -82,17 +88,15 @@ connectSheet.addEventListener("click", () => {
 
     selectedSheetUrl = url;
     selectedFile = null;
-    extractedContent = "";
-    uploadedFileName = "";
     fileInput.value = "";
+    resetDocumentData();
 
+    fileInfo.textContent = "Google Sheet link selected.";
     extractedData.textContent =
       "Google Sheets integration is not connected yet.";
 
     documentDataInfo.textContent =
       "Google Sheets authorization is required.";
-
-    fileInfo.textContent = "Google Sheet link selected.";
 
     statusText.textContent =
       "Google Sheets integration is not ready yet. " +
@@ -103,12 +107,12 @@ connectSheet.addEventListener("click", () => {
   }
 });
 
-// STEP 3: Display messages in the chat
+// STEP 4: Safely display a chat message
 function addMessage(role, content) {
   const message = document.createElement("div");
 
   message.className = `message ${role}`;
-  message.textContent = content;
+  message.textContent = String(content ?? "");
 
   chatMessages.appendChild(message);
 
@@ -116,9 +120,84 @@ function addMessage(role, content) {
     behavior: "smooth",
     block: "nearest"
   });
+
+  return message;
 }
 
-// STEP 4: Upload document to Python backend
+// STEP 5: Display matching records as an actual HTML table
+function displayResultTable(tableData) {
+  if (
+    !tableData ||
+    !Array.isArray(tableData.columns) ||
+    !Array.isArray(tableData.rows)
+  ) {
+    return;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "result-table-wrapper";
+
+  if (tableData.rows.length === 0) {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.textContent = "No matching records found.";
+    wrapper.appendChild(emptyMessage);
+    chatMessages.appendChild(wrapper);
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.className = "result-table";
+
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+
+  tableData.columns.forEach((column) => {
+    const th = document.createElement("th");
+    th.textContent = String(column ?? "");
+    headerRow.appendChild(th);
+  });
+
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  tableData.rows.forEach((row) => {
+    const tr = document.createElement("tr");
+
+    tableData.columns.forEach((column, index) => {
+      const td = document.createElement("td");
+
+      let value;
+
+      if (Array.isArray(row)) {
+        value = row[index];
+      } else if (row && typeof row === "object") {
+        value = row[column];
+      }
+
+      td.textContent =
+        value === null || value === undefined
+          ? ""
+          : String(value);
+
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  wrapper.appendChild(table);
+  chatMessages.appendChild(wrapper);
+
+  wrapper.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+}
+
+// STEP 6: Upload the document to the backend
 async function uploadDocument(file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -136,24 +215,32 @@ async function uploadDocument(file) {
     );
   }
 
+  if (typeof data.extracted_content !== "string") {
+    throw new Error(
+      "The backend did not return extracted document text."
+    );
+  }
+
+  extractedStructuredData = Array.isArray(data.structured_data)
+    ? data.structured_data
+    : [];
+
   return data;
 }
 
-// STEP 5: Handle the user's question
+// STEP 7: Ask questions about the selected document
 questionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const question = questionInput.value.trim();
 
   if (!selectedFile && !selectedSheetUrl) {
-    statusText.textContent =
-      "Please select a document first.";
+    statusText.textContent = "Please select a document first.";
     return;
   }
 
   if (!question) {
-    statusText.textContent =
-      "Please enter a question.";
+    statusText.textContent = "Please enter a question.";
     return;
   }
 
@@ -169,29 +256,20 @@ questionForm.addEventListener("submit", async (event) => {
   questionInput.value = "";
   sendButton.disabled = true;
 
-  statusText.textContent =
-    "Reading your document...";
+  statusText.textContent = "Reading your document...";
 
   try {
-    // STEP 6: Upload and extract the document
-    // Reuse the extracted content for follow-up questions
-    // about the same selected file.
+    // Upload once per selected file
     if (
       !extractedContent ||
       uploadedFileName !== selectedFile.name
     ) {
       const uploadData = await uploadDocument(selectedFile);
 
-      if (typeof uploadData.extracted_content !== "string") {
-        throw new Error(
-          "The backend did not return extracted document text."
-        );
-      }
-
       extractedContent = uploadData.extracted_content;
       uploadedFileName = selectedFile.name;
 
-      // Display exact extracted text separately from AI answers
+      // Show the extracted document separately
       extractedData.textContent = extractedContent;
 
       documentDataInfo.textContent =
@@ -203,15 +281,13 @@ questionForm.addEventListener("submit", async (event) => {
 
       addMessage(
         "assistant",
-        `Document read successfully: ${uploadData.filename}. ` +
-        `Extracted ${uploadData.character_count} characters. ` +
-        "See the Extracted Document Data section for the content."
+        `Document loaded: ${uploadData.filename}. ` +
+        `${uploadData.character_count} characters extracted.`
       );
     }
 
-    // STEP 7: Send the question and document content to Ollama
-    statusText.textContent =
-      "AI is thinking. Please wait...";
+    // Send the question, text and structured spreadsheet data
+    statusText.textContent = "Finding the relevant information...";
 
     const response = await fetch(`${API_URL}/api/ask`, {
       method: "POST",
@@ -220,7 +296,8 @@ questionForm.addEventListener("submit", async (event) => {
       },
       body: JSON.stringify({
         question: question,
-        document_content: extractedContent
+        document_content: extractedContent,
+        structured_data: extractedStructuredData
       })
     });
 
@@ -228,22 +305,26 @@ questionForm.addEventListener("submit", async (event) => {
 
     if (!response.ok) {
       throw new Error(
-        answerData.detail ||
-        "AI could not answer your question."
+        answerData.detail || "Could not answer the question."
       );
     }
 
-    // STEP 8: Display only the AI-generated answer in chat
-    addMessage("assistant", answerData.answer);
+    // Display the answer returned by the backend
+    if (answerData.answer) {
+      addMessage("assistant", answerData.answer);
+    }
 
-    statusText.textContent =
-      "Answer generated successfully.";
+    // Display actual records if the backend returns a table
+    if (answerData.table) {
+      displayResultTable(answerData.table);
+    }
+
+    statusText.textContent = "Answer generated successfully.";
 
   } catch (error) {
     console.error("Chatbot error:", error);
 
-    statusText.textContent =
-      `Error: ${error.message}`;
+    statusText.textContent = `Error: ${error.message}`;
 
     addMessage(
       "assistant",
