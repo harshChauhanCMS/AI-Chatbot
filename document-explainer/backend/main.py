@@ -465,23 +465,101 @@ def row_matches_role(row, role_columns, keyword):
     return False
 
 
+
+def extract_employee_name(question: str):
+    patterns = [
+        r"\bemployee\s+name\s+(?:is\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){1,3})\s*$",
+        r"\bemployee\s+(?:named|called)\s+([A-Za-z]+(?:\s+[A-Za-z]+){1,3})\s*$",
+        r"\bname\s+(?:is\s+)?([A-Za-z]+(?:\s+[A-Za-z]+){1,3})\s*$",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, question.strip(), re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+
+    return None
+
+
 # ==================================================
 # 12. FILTER EMPLOYEE DATA
 # ==================================================
 
-def filter_employee_data(question, structured_data):
-    salary_condition = parse_salary_condition(question)
-    role_keyword = extract_role_keyword(question)
 
-    if not salary_condition and not role_keyword:
+def filter_employee_data(question, structured_data):
+    if not structured_data:
         return None
+
+    salary_condition = parse_salary_condition(question)
+    employee_name = extract_employee_name(question)
 
     all_columns = []
     all_rows = []
+    department_values = set()
     salary_column_found = False
     role_column_found = False
+    department_column_found = False
 
-    for sheet in structured_data or []:
+    # Collect data and actual department values.
+    for sheet in structured_data:
+        columns = sheet.get("columns", [])
+        rows = sheet.get("rows", [])
+
+        for column in columns:
+            if column not in all_columns:
+                all_columns.append(column)
+
+        department_column = next(
+            (
+                col for col in columns
+                if normalize_column(col) == "department"
+            ),
+            None,
+        )
+
+        if department_column:
+            department_column_found = True
+
+            for row in rows:
+                value = str(row.get(department_column, "")).strip()
+                if value:
+                    department_values.add(value)
+
+        all_rows.extend(rows)
+
+    # Identify a department from the actual spreadsheet values.
+    # This avoids matching "IT" inside a role such as "Recruiter".
+    department_keyword = None
+
+    if re.search(r"\bdepartment\b", question, re.IGNORECASE):
+        for value in sorted(department_values, key=len, reverse=True):
+            if re.search(
+                r"(?<!\w)" + re.escape(value) + r"(?!\w)",
+                question,
+                re.IGNORECASE,
+            ):
+                department_keyword = value
+                break
+
+    # Only use role matching when the question isn't asking
+    # for a department or a specific employee name.
+    role_keyword = None
+
+    if department_keyword is None and employee_name is None:
+        role_keyword = extract_role_keyword(question)
+
+    # Don't intercept ordinary questions.
+    if (
+        salary_condition is None
+        and employee_name is None
+        and department_keyword is None
+        and role_keyword is None
+    ):
+        return None
+
+    matching_rows = []
+
+    for sheet in structured_data:
         columns = sheet.get("columns", [])
         rows = sheet.get("rows", [])
 
@@ -491,15 +569,35 @@ def filter_employee_data(question, structured_data):
         salary_column = find_salary_column(columns)
         role_columns = find_role_columns(columns)
 
+        department_column = next(
+            (
+                col for col in columns
+                if normalize_column(col) == "department"
+            ),
+            None,
+        )
+
+        name_column = next(
+            (
+                col for col in columns
+                if normalize_column(col) in {
+                    "name", "employeename", "fullname"
+                }
+            ),
+            None,
+        )
+
         if salary_column:
             salary_column_found = True
 
         if role_columns:
             role_column_found = True
 
-        for column in columns:
-            if column not in all_columns:
-                all_columns.append(column)
+        if department_keyword and not department_column:
+            continue
+
+        if employee_name and not name_column:
+            continue
 
         if salary_condition and not salary_column:
             continue
@@ -508,19 +606,39 @@ def filter_employee_data(question, structured_data):
             continue
 
         for row in rows:
-            # Filter by salary when requested.
+            # Match the requested employee name.
+            if employee_name:
+                actual_name = str(row.get(name_column, "")).strip()
+
+                if actual_name.casefold() != employee_name.casefold():
+                    continue
+
+            # Match the department exactly.
+            if department_keyword:
+                actual_department = str(
+                    row.get(department_column, "")
+                ).strip()
+
+                if actual_department.casefold() != department_keyword.casefold():
+                    continue
+
+            # Match role/designation when requested.
+            if role_keyword and not row_matches_role(
+                row, role_columns, role_keyword
+            ):
+                continue
+
+            # Preserve the existing salary filter.
             if salary_condition:
                 raw_salary = row.get(salary_column)
 
                 try:
-                    salary_text = (
+                    salary = float(
                         str(raw_salary)
                         .replace(",", "")
                         .replace("₹", "")
                         .strip()
                     )
-                    salary = float(salary_text)
-
                 except (TypeError, ValueError):
                     continue
 
@@ -528,80 +646,73 @@ def filter_employee_data(question, structured_data):
 
                 if operator == "lt" and salary >= threshold:
                     continue
-
                 if operator == "gt" and salary <= threshold:
                     continue
-
                 if operator == "eq" and salary != threshold:
                     continue
 
-            # Filter by role or department.
-            if not row_matches_role(
-                row,
-                role_columns,
-                role_keyword
-            ):
-                continue
+            matching_rows.append(row)
 
-            all_rows.append(row)
+    if employee_name and not any(
+        normalize_column(col) in {"name", "employeename", "fullname"}
+        for col in all_columns
+    ):
+        return {
+            "answer": "I couldn't find an employee name column.",
+            "table": {"columns": all_columns, "rows": []},
+        }
+
+    if department_keyword and not department_column_found:
+        return {
+            "answer": "I couldn't find a Department column.",
+            "table": {"columns": all_columns, "rows": []},
+        }
 
     if salary_condition and not salary_column_found:
         return {
-            "answer": (
-                "I couldn't find a salary column. "
-                "Please check for a Salary or CTC column."
-            ),
-            "table": {"columns": [], "rows": []}
+            "answer": "I couldn't find a salary column.",
+            "table": {"columns": all_columns, "rows": []},
         }
 
     if role_keyword and not role_column_found:
         return {
-            "answer": (
-                "I couldn't find a role or department column. "
-                "Please check for a Department, Role, "
-                "Designation, or Position column."
-            ),
-            "table": {"columns": [], "rows": []}
+            "answer": "I couldn't find a role or department column.",
+            "table": {"columns": all_columns, "rows": []},
         }
 
     criteria = []
 
+    if employee_name:
+        criteria.append(f"employee name '{employee_name}'")
+
+    if department_keyword:
+        criteria.append(f"department '{department_keyword}'")
+
     if role_keyword:
-        criteria.append(
-            f"'{role_keyword}' in the role or department fields"
-        )
+        criteria.append(f"role matching '{role_keyword}'")
 
     if salary_condition:
         operator, amount = salary_condition
-
         label = {
             "lt": "less than",
             "gt": "greater than",
-            "eq": "equal to"
+            "eq": "equal to",
         }[operator]
-
         criteria.append(f"salary {label} {amount:g}")
 
     description = " and ".join(criteria)
 
-    if not all_rows:
-        return {
-            "answer": f"No employees found matching {description}.",
-            "table": {
-                "columns": all_columns,
-                "rows": []
-            }
-        }
-
     return {
         "answer": (
-            f"Found {len(all_rows)} employee(s) matching "
+            f"Found {len(matching_rows)} employee(s) matching "
             f"{description}. Their details are shown below."
+            if matching_rows
+            else f"No employees found matching {description}."
         ),
         "table": {
             "columns": all_columns,
-            "rows": all_rows
-        }
+            "rows": matching_rows,
+        },
     }
 
 
