@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DocuMind Chat</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <main class="chat-page">
     <header class="topbar chat-topbar">
@@ -16,8 +18,10 @@
           <p>AI DOCUMENT ASSISTANT</p>
         </div>
       </div>
-      <div class="backend-pill" id="backendPill"><span class="status-dot"></span> <span id="backendStatus">Checking assistant…</span></div>
+      <div class="backend-pill" id="backendPill"><span class="status-dot"></span> <span id="backendStatus">Checking
+          assistant…</span></div>
     </header>
+
 
     <section class="chat-card chat-card-full">
       <div class="card-heading chat-heading">
@@ -28,18 +32,40 @@
         <button class="text-button" id="clearChat" type="button">Clear chat ↺</button>
       </div>
 
+
       <div class="chips" id="chips">
-        <button class="chip" type="button" data-q="Summarize the documents in simple language.">Summarize documents</button>
+        <button class="chip" type="button" data-q="Summarize the documents in simple language.">Summarize
+          documents</button>
         <button class="chip" type="button" data-q="What are the most important points?">Key points</button>
-        <button class="chip" type="button" data-q="What data is available in the spreadsheets?">What data is available?</button>
+        <button class="chip" type="button" data-q="What data is available in the spreadsheets?">What data is
+          available?</button>
       </div>
 
       <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
 
+
+      <div class="upload-section">
+        <input type="file" id="documentInput" accept=".pdf,.docx,.txt,.xlsx,.csv" hidden />
+
+        <button type="button" class="upload-button" id="uploadButton" title="Upload document">
+          <span>＋</span> Upload document
+        </button>
+ 
+        <span id="fileName" class="file-name"></span>
+
+        <button type="button" id="removeFile" class="remove-file" hidden aria-label="Remove selected file">
+          ✕
+        </button> 
+      </div> 
+
       <form class="question-form" id="questionForm">
         <textarea id="question" rows="2" placeholder="Ask anything about the documents..." required></textarea>
-        <button id="sendButton" class="button button-primary" type="submit">Ask <span>↗</span></button>
-      </form>
+
+        <button id="sendButton" class="button button-primary" type="submit">
+          Ask <span>↗</span>
+        </button> 
+      </form> 
+
       <p class="status" id="status" role="status"></p>
     </section>
 
@@ -48,4 +74,5 @@
   <script src="common.js"></script>
   <script src="script.js"></script>
 </body>
+
 </html>

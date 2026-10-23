@@ -623,7 +623,7 @@ def answer_from_spreadsheets(
             problem = (
                 "the user asks to see the records themselves, not a count or "
                 "total. Select the matching rows with their identifying columns."
-            )
+            ) 
         elif not re.search(r"(?i)\bwhere\b", sql) \
                 and not AGGREGATE_PATTERN.search(sql) \
                 and not ALL_RECORDS_PATTERN.search(question.split(FOLLOW_UP_CONTEXT)[0]):

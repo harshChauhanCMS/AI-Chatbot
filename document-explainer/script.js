@@ -208,3 +208,45 @@ questionForm.addEventListener("submit", async (event) => {
 addMessage("assistant", WELCOME);
 checkHealth(backendPill, backendStatus);
 window.setInterval(() => checkHealth(backendPill, backendStatus), 30000);
+// add the document upload logic
+const documentInput = document.getElementById("documentInput");
+const uploadButton = document.getElementById("uploadButton");
+const fileName = document.getElementById("fileName");
+const removeFile = document.getElementById("removeFile");
+
+uploadButton.addEventListener("click", () => {
+  documentInput.click();
+});
+
+documentInput.addEventListener("change", () => {
+  const file = documentInput.files[0];
+
+  if (!file) return;
+
+  const allowedExtensions = [
+    "pdf", "docx", "txt", "xlsx", "csv"
+  ];
+
+  const extension = file.name.split(".").pop().toLowerCase();
+
+  if (!allowedExtensions.includes(extension)) {
+    alert("Please select a PDF, DOCX, TXT, XLSX, or CSV file.");
+    documentInput.value = "";
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert("File size must be 10 MB or less.");
+    documentInput.value = "";
+    return;
+  }
+
+  fileName.textContent = file.name;
+  removeFile.hidden = false;
+});
+
+removeFile.addEventListener("click", () => {
+  documentInput.value = "";
+  fileName.textContent = "";
+  removeFile.hidden = true;
+}); 

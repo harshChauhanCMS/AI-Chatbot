@@ -949,3 +949,52 @@ a.nav-item:hover {
     align-items: center;
   }
 }
+
+
+/* Document upload */
+.upload-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #d9ddec;
+  border-radius: 10px;
+  background: #fff;
+  color: #4545a5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.upload-button:hover {
+  background: #f2f3ff;
+  border-color: #a7a8ed;
+}
+
+.upload-button span {
+  font-size: 20px;
+}
+
+.file-name {
+  color: #53586b;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.remove-file {
+  border: none;
+  background: transparent;
+  color: #d14343;
+  font-size: 16px;
+  cursor: pointer;
+}
