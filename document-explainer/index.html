@@ -3,136 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Document Explainer</title>
+  <title>DocuMind Chat</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
+  <main class="chat-page">
+    <header class="topbar chat-topbar">
       <div class="brand">
         <div class="brand-icon">✦</div>
         <div>
           <h1>DocuMind</h1>
-          <p>AI DOCUMENT EXPLAINER</p>
+          <p>AI DOCUMENT ASSISTANT</p>
         </div>
       </div>
+      <div class="backend-pill" id="backendPill"><span class="status-dot"></span> <span id="backendStatus">Checking assistant…</span></div>
+    </header>
 
-      <div class="sidebar-section">
-        <p class="section-label">WORKSPACE</p>
-        <div class="nav-item active"><span>▤</span> Document chat</div>
-        <div class="nav-item"><span>⌁</span> Data insights</div>
-      </div>
-
-      <div class="sidebar-note">
-        <div class="note-icon">✧</div>
-        <h3>Your documents, simplified.</h3>
-        <p>Ask questions in plain language and get clear, helpful explanations.</p>
-      </div>
-
-      <div class="sidebar-footer">
-        <span class="status-dot"></span>
-        <span>Local AI backend</span>
-        <span class="footer-version">v1.0</span>
-      </div>
-    </aside>
-
-    <main class="main-content">
-      <header class="topbar">
+    <section class="chat-card chat-card-full">
+      <div class="card-heading chat-heading">
         <div>
-          <p class="eyebrow">YOUR AI WORKSPACE</p>
-          <h2>Document Explainer</h2>
+          <h3>Ask a question</h3>
+          <p>Answers come only from the documents provided by your administrator.</p>
         </div>
-        <div class="backend-pill"><span class="status-dot"></span> Assistant ready</div>
-      </header>
-
-      <div class="workspace">
-        <section class="chat-column">
-          <div class="intro">
-            <div class="intro-icon">✦</div>
-            <h2>What would you like to understand?</h2>
-            <p>Upload a PDF, Excel or CSV file and ask a question about its contents.</p>
-          </div>
-
-          <section class="upload-card">
-            <div class="card-heading">
-              <div>
-                <h3>1. Add your document</h3>
-                <p>Supported formats: PDF, XLSX, XLS and CSV</p>
-              </div>
-              <span class="step-number">01</span>
-            </div>
-
-            <div class="dropzone" id="dropzone">
-              <input id="document" type="file" accept=".pdf,.xlsx,.xls,.csv" hidden>
-              <div class="upload-icon">↑</div>
-              <p class="drop-title">Drag and drop your file here</p>
-              <p class="drop-subtitle">or</p>
-              <button class="button button-secondary" id="browseButton" type="button">Browse files</button>
-              <p class="file-info" id="fileInfo">No file selected</p>
-              <button class="text-button remove-file" id="removeFile" type="button" hidden>Remove file</button>
-            </div>
-
-            <div class="sheet-divider"><span>OR USE A GOOGLE SHEETS LINK</span></div>
-            <div class="sheet-row">
-              <input id="sheetUrl" type="url" placeholder="Paste Google Sheets URL">
-              <button id="connectSheet" class="button button-secondary" type="button">Connect</button>
-            </div>
-            <p class="small-note">Google Sheets authorization is not configured yet. File upload is available.</p>
-          </section>
-
-          <section class="chat-card">
-            <div class="card-heading chat-heading">
-              <div>
-                <h3>2. Ask your document</h3>
-                <p>Ask a question or choose a suggestion below.</p>
-              </div>
-              <button class="text-button" id="clearChat" type="button">Clear chat ↺</button>
-            </div>
-
-            <div class="chips" id="chips">
-              <button class="chip" type="button" data-q="Summarize this document in simple language.">Summarize document</button>
-              <button class="chip" type="button" data-q="What are the most important points?">Key points</button>
-              <button class="chip" type="button" data-q="Explain this document with an example.">Explain with an example</button>
-            </div>
-
-            <div class="chat-messages" id="chatMessages" aria-live="polite">
-              <div class="message assistant">Hello! Upload a document, then ask me to explain it.</div>
-            </div>
-
-            <form class="question-form" id="questionForm">
-              <textarea id="question" rows="2" placeholder="Ask anything about your document..." required></textarea>
-              <button id="sendButton" class="button button-primary" type="submit">Explain document <span>↗</span></button>
-            </form>
-            <p class="status" id="status" role="status"></p>
-          </section>
-        </section>
-
-        <aside class="data-column">
-          <section class="data-card" id="dataPanel">
-            <div class="data-card-heading">
-              <div>
-                <p class="eyebrow">DOCUMENT SOURCE</p>
-                <h3>Extracted data</h3>
-              </div>
-              <span class="data-badge" id="dataBadge">empty</span>
-            </div>
-            <p class="data-info" id="documentDataInfo">Select a file and ask a question to extract its data.</p>
-            <div class="extracted-data" id="extractedData">No document data available yet.</div>
-            <p class="data-footnote">This panel shows text extracted from your uploaded file. AI answers appear in the chat.</p>
-          </section>
-
-          <section class="privacy-card">
-            <div class="privacy-icon">⌑</div>
-            <div>
-              <h4>Keep your data in context</h4>
-              <p>Ask specific questions for more useful answers. Always verify important results against the source document.</p>
-            </div>
-          </section>
-        </aside>
+        <button class="text-button" id="clearChat" type="button">Clear chat ↺</button>
       </div>
-      <footer class="page-footer">AI Document Explainer <span>•</span> Answers may need verification.</footer>
-    </main>
-  </div>
+
+      <div class="chips" id="chips">
+        <button class="chip" type="button" data-q="Summarize the documents in simple language.">Summarize documents</button>
+        <button class="chip" type="button" data-q="What are the most important points?">Key points</button>
+        <button class="chip" type="button" data-q="What data is available in the spreadsheets?">What data is available?</button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+
+      <form class="question-form" id="questionForm">
+        <textarea id="question" rows="2" placeholder="Ask anything about the documents..." required></textarea>
+        <button id="sendButton" class="button button-primary" type="submit">Ask <span>↗</span></button>
+      </form>
+      <p class="status" id="status" role="status"></p>
+    </section>
+
+    <footer class="page-footer">DocuMind <span>•</span> Answers list their sources. Verify important results.</footer>
+  </main>
+  <script src="common.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

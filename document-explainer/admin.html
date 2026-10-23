@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>DocuMind Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">✦</div>
+        <div>
+          <h1>DocuMind</h1>
+          <p>ADMIN</p>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <p class="section-label">MANAGE</p>
+        <div class="nav-item active"><span>▤</span> Knowledge base</div>
+        <a class="nav-item" href="index.html" target="_blank" rel="noopener"><span>↗</span> Open chatbot</a>
+      </div>
+
+      <div class="sidebar-note">
+        <div class="note-icon">✧</div>
+        <h3>What you add is what it knows.</h3>
+        <p>The chatbot answers only from the files listed here. Remove a file and the chatbot forgets it.</p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <span>Local AI backend</span>
+        <span class="footer-version">v2.1</span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ADMIN</p>
+          <h2>Knowledge base</h2>
+        </div>
+        <div class="topbar-actions">
+          <div class="backend-pill" id="backendPill"><span class="status-dot"></span> <span id="backendStatus">Checking assistant…</span></div>
+          <button class="button button-secondary" id="logoutButton" type="button" hidden>Log out</button>
+        </div>
+      </header>
+
+      <section class="login-card" id="loginSection" hidden>
+        <div class="intro-icon">⌑</div>
+        <h2>Admin sign in</h2>
+        <p>Enter the admin password to manage the documents the chatbot answers from.</p>
+        <form id="loginForm">
+          <input id="password" type="password" placeholder="Admin password" autocomplete="current-password" required>
+          <button class="button button-primary" id="loginButton" type="submit">Sign in</button>
+        </form>
+        <p class="status" id="loginStatus" role="status"></p>
+      </section>
+
+      <div class="workspace" id="adminSection" hidden>
+        <section class="chat-column">
+          <section class="upload-card">
+            <div class="card-heading">
+              <div>
+                <h3>Add documents</h3>
+                <p>PDF, XLSX, XLS and CSV. A file with the same name replaces the old version.</p>
+              </div>
+            </div>
+
+            <div class="dropzone" id="dropzone">
+              <input id="document" type="file" accept=".pdf,.xlsx,.xls,.csv" multiple hidden>
+              <div class="upload-icon">↑</div>
+              <p class="drop-title">Drag and drop files here</p>
+              <p class="drop-subtitle">or</p>
+              <button class="button button-secondary" id="browseButton" type="button">Browse files</button>
+              <p class="file-info" id="fileInfo">Files are read and indexed as soon as you add them.</p>
+            </div>
+
+            <div class="sheet-divider"><span>OR USE A GOOGLE SHEETS LINK</span></div>
+            <div class="sheet-row">
+              <input id="sheetUrl" type="url" placeholder="Paste Google Sheets URL">
+              <button id="connectSheet" class="button button-secondary" type="button">Connect</button>
+            </div>
+            <p class="small-note">Google Sheets authorization is not configured yet. File upload is available.</p>
+            <p class="status" id="status" role="status"></p>
+          </section>
+
+          <section class="data-card library-card">
+            <div class="data-card-heading">
+              <div>
+                <p class="eyebrow">STORED ON THIS COMPUTER</p>
+                <h3>Documents</h3>
+              </div>
+              <span class="data-badge" id="libraryBadge">0 files</span>
+            </div>
+            <ul class="library-list" id="libraryList"></ul>
+            <p class="data-info library-empty" id="libraryEmpty">No documents yet. Add a file to get started.</p>
+          </section>
+        </section>
+
+        <aside class="data-column">
+          <section class="data-card" id="dataPanel">
+            <div class="data-card-heading">
+              <div>
+                <p class="eyebrow">DOCUMENT PREVIEW</p>
+                <h3>Extracted data</h3>
+              </div>
+              <span class="data-badge" id="dataBadge">none</span>
+            </div>
+            <p class="data-info" id="documentDataInfo">Select a document to preview it.</p>
+            <div class="extracted-data" id="extractedData">No document selected.</div>
+            <p class="data-footnote">This is the data the chatbot reads. Spreadsheet previews show the first 200 rows; calculations use every row.</p>
+          </section>
+        </aside>
+      </div>
+      <footer class="page-footer">DocuMind admin <span>•</span> Only signed-in admins can add or remove documents.</footer>
+    </main>
+  </div>
+  <script src="common.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
