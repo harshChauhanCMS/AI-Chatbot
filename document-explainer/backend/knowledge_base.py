@@ -432,6 +432,12 @@ def embed(texts: list[str], kind: str) -> np.ndarray:
                 timeout=600,
             )
 
+            if response.status_code == 404:
+                raise RuntimeError(
+                    f"The embedding model '{EMBED_MODEL}' is not installed in "
+                    f"Ollama. Install it with: ollama pull {EMBED_MODEL}"
+                )
+
             if response.status_code != 200:
                 raise RuntimeError(
                     f"Embedding model returned HTTP {response.status_code}: "

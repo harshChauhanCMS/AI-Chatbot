@@ -13,6 +13,7 @@ import requests
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 # Load settings such as ADMIN_PASSWORD before the knowledge base reads them.
@@ -95,6 +96,12 @@ def ollama_chat(
             },
             timeout=900,
         )
+
+        if response.status_code == 404:
+            raise RuntimeError(
+                f"The AI model '{OLLAMA_MODEL}' is not installed in Ollama. "
+                f"Install it with: ollama pull {OLLAMA_MODEL}"
+            )
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -916,7 +923,9 @@ async def upload_document(file: UploadFile = File(...)):
         )
 
     try:
-        return kb.add_document(filename, content)
+        # Indexing is slow, blocking work; run it in a worker thread so the
+        # chat and other requests keep responding during an upload.
+        return await run_in_threadpool(kb.add_document, filename, content)
 
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
